@@ -7,7 +7,20 @@
         x:Class="client.MainWindow"
         Title="API Data Fetch Example">
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-        <TextBlock Name="ApiDataText" Text="Fetching data..." FontSize="20" />
-    </StackPanel>
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <!-- Drag and Drop and File Dialog Button -->
+            <Button Name="ChooseFileButton" Content="Choose File" Click="ChooseFileButton_Click"/>
+            <TextBlock Name="DragDropText" Text="Drag and drop a file here" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+            <!-- Container with switch button and search button -->
+            <StackPanel Orientation="Horizontal" Margin="20">
+                <ToggleSwitch Name="SearchAlgorithmSwitch" Content="BM / KMP" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <Button Name="SearchButton" Content="Search" Margin="10,0,0,0" Click="SearchButton_Click"/>
+            </StackPanel>
+
+            <!-- Text block for displaying API data -->
+            <TextBlock Name="ApiDataText" Text="Fetching data..." FontSize="20" />
+        </StackPanel>
+    </Grid>
 </Window>
