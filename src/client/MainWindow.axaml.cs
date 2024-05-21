@@ -3,12 +3,16 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace client
@@ -16,6 +20,10 @@ namespace client
     public partial class MainWindow : Window
     {
         private HttpClient _client = new HttpClient();
+        private byte[]? _fileData;
+        private Bitmap? _selectedImage;
+
+        public bool IsBMAlgorithm { get; set; } = true;
 
         public MainWindow()
         {
@@ -23,6 +31,7 @@ namespace client
 #if DEBUG
             this.AttachDevTools();
 #endif
+            DataContext = this;
         }
 
         private void InitializeComponent()
@@ -32,12 +41,12 @@ namespace client
             this.AddHandler(DragDrop.DragOverEvent, Window_DragOver);
         }
 
-        private void Window_DragOver(object sender, DragEventArgs e)
+        private void Window_DragOver(object? sender, DragEventArgs e)
         {
             e.DragEffects = DragDropEffects.Copy;
         }
 
-        private async void ChooseFileButton_Click(object sender, RoutedEventArgs e)
+        private async void ChooseFileButton_Click(object? sender, RoutedEventArgs e)
         {
             var result = await ((TopLevel)this).StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
@@ -48,11 +57,11 @@ namespace client
             if (result != null && result.Any())
             {
                 var file = result.First();
-                HandleFile(file.Path.LocalPath);
+                await HandleFile(file.Path.LocalPath);
             }
         }
 
-        private void Window_Drop(object? sender, DragEventArgs e)
+        private async void Window_Drop(object? sender, DragEventArgs e)
         {
             if (e.Data.Contains(DataFormats.Files))
             {
@@ -60,53 +69,91 @@ namespace client
                 var file = files?.FirstOrDefault();
                 if (file != null)
                 {
-                    HandleFile(file.Path.LocalPath);
+                    await HandleFile(file.Path.LocalPath);
                 }
             }
         }
 
-        private void HandleFile(string filePath)
+        private async Task HandleFile(string filePath)
         {
             var apiDataText = this.FindControl<TextBlock>("ApiDataText");
             if (apiDataText != null)
             {
                 apiDataText.Text = $"File selected: {Path.GetFileName(filePath)}";
             }
-        }
 
-        private void SearchButton_Click(object sender, RoutedEventArgs e)
-        {
-            var searchAlgorithmSwitch = this.FindControl<ToggleSwitch>("SearchAlgorithmSwitch");
-            var apiDataText = this.FindControl<TextBlock>("ApiDataText");
-            if (searchAlgorithmSwitch != null && apiDataText != null)
+            // Read the file as a byte array
+            _fileData = await File.ReadAllBytesAsync(filePath);
+
+            // Update the selected image
+            _selectedImage = new Bitmap(filePath);
+
+            // Update the Image control
+            var inputImage = this.FindControl<Image>("InputImage");
+            if (inputImage != null)
             {
-                var algorithm = searchAlgorithmSwitch.IsChecked == true ? "BM" : "KMP";
-                apiDataText.Text = $"Search using {algorithm} algorithm";
+                inputImage.Source = _selectedImage;
             }
         }
 
-        private async void FetchData()
+        private string ConvertToBinaryString(byte[] data)
         {
+            StringBuilder binaryString = new StringBuilder();
+            foreach (byte b in data)
+            {
+                binaryString.Append(Convert.ToString(b, 2).PadLeft(8, '0'));
+            }
+            return binaryString.ToString();
+        }
+
+        private async void SearchButton_Click(object? sender, RoutedEventArgs e)
+        {
+            var apiDataText = this.FindControl<TextBlock>("ApiDataText");
+
+            if (_fileData == null)
+            {
+                if (apiDataText != null)
+                {
+                    apiDataText.Text = "No image chosen";
+                }
+                return;
+            }
+
+            string binaryData = ConvertToBinaryString(_fileData);
+
+            var requestBody = new
+            {
+                data = binaryData,
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
             try
             {
-                string url = "http://localhost:5099/api/sidikjari";
-                HttpResponseMessage response = await _client.GetAsync(url);
+                var endpoint = IsBMAlgorithm ? "http://localhost:5099/api/bm" : "http://localhost:5099/api/kmp";
+                var response = await _client.PostAsync(endpoint, content);
                 response.EnsureSuccessStatusCode();
-                string responseBody = await response.Content.ReadAsStringAsync();
+                var responseBody = await response.Content.ReadAsStringAsync();
 
                 Dispatcher.UIThread.Post(() =>
                 {
-                    var apiDataText = this.FindControl<TextBlock>("ApiDataText");
                     if (apiDataText != null)
                     {
-                        apiDataText.Text = responseBody;
+                        apiDataText.Text = $"Response: {responseBody}";
                     }
                 });
             }
-            catch (HttpRequestException e)
+            catch (HttpRequestException ex)
             {
-                Console.WriteLine("\nException Caught!");
-                Console.WriteLine("Message :{0} ", e.Message);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (apiDataText != null)
+                    {
+                        apiDataText.Text = $"Error: {ex.Message}";
+                    }
+                });
             }
         }
     }

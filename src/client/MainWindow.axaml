@@ -3,9 +3,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
+        xmlns:local="clr-namespace:client"
         d:DesignWidth="800" d:DesignHeight="450"
         x:Class="client.MainWindow"
-        Title="Pattern Matching Based on Fingerprint">
+        Title="Pattern Matching Based on Fingerprint"
+        x:DataType="local:MainWindow">
     <Window.Styles>
         <Style Selector="Button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="DarkGray"/>
@@ -38,10 +40,7 @@
 
             <!-- Image placeholders -->
             <Border Grid.Row="1" Grid.Column="0" Margin="30, 0, 30, 30" Background="LightGray">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <!-- <TextBlock Text="Sidik Jari Masukan" Foreground="Black" VerticalAlignment="Center" FontWeight="900"/> -->
-                    <!-- <Image Width="200" Height="200" Source="/tests/SOCOFing/Real/1__M_Left_index_finger.bmp"/> -->
-                </StackPanel>
+                <Image Name="InputImage" Width="350" Height="350" Stretch="Uniform"/>
             </Border>
             <Border Grid.Row="1" Grid.Column="1" Margin="30, 0, 30, 30" Background="LightGray">
                 <TextBlock Text="Sidik Jari Cocok" Foreground="Black" HorizontalAlignment="Center" 
@@ -57,15 +56,9 @@
                 <Button Name="ChooseFileButton" Margin="5" Background="Gold" Click="ChooseFileButton_Click" Foreground="Black" FontWeight="600" Width="100" HorizontalAlignment="Center">
                     <TextBlock Text="Pilih Citra" HorizontalAlignment="Center"/>
                 </Button>
-                <ToggleButton Width="100" IsChecked="True" Background="Crimson">
+                <ToggleButton Width="100" IsChecked="{Binding IsBMAlgorithm}" Background="Crimson">
                     <TextBlock Foreground="Black" FontWeight="600" HorizontalAlignment="Center"/>
                 </ToggleButton>
-                <!-- <Button x:Name="BMButton" Margin="5" Background="LightSkyBlue" Click="BMButton_Click" Foreground="Black" FontWeight="600" Width="100">
-                    <TextBlock Text="BM" HorizontalAlignment="Center"/>
-                </Button>
-                <Button x:Name="KMPButton" Margin="5" Background="Crimson" Click="KMPButton_Click" Foreground="Black" FontWeight="600" Width="100">
-                    <TextBlock Text="KMP" HorizontalAlignment="Center"/>
-                </Button> -->
                 <Button Name="SearchButton" Margin="5" Background="MediumSeaGreen" Click="SearchButton_Click" Foreground="Black" FontWeight="600" Width="100">
                     <TextBlock Text="Search" HorizontalAlignment="Center"/>
                 </Button>
@@ -73,6 +66,7 @@
 
             <!-- Search results -->
             <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Orientation="Vertical" HorizontalAlignment="Center" Margin="20">
+                <TextBlock Name="ApiDataText" Margin="5" Foreground="Black" FontWeight="600"/>
                 <TextBlock Name="SearchTimeText" Text="Waktu Pencarian              : xxx ms" Margin="5" 
                 Foreground="Black" FontWeight="600"/>
                 <TextBlock Name="AccuracyText" Text="Persentase Kecocokan  : xx%" Margin="5" 
