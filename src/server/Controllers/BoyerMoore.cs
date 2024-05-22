@@ -1,8 +1,12 @@
 namespace server{
     public static class BoyerMoore
     {
-        public static int BMSearch(string text, string pattern)
-        {
+        public static bool BMSearch(string text, string pattern)
+        {   
+            if (pattern.Length > text.Length) {
+                (pattern, text) = (text, pattern);
+            }
+            
             int[] last = BuildLast(pattern);
             int n = text.Length;
             int m = pattern.Length;
@@ -10,7 +14,7 @@ namespace server{
 
             if (i > n - 1)
             {
-                return -1;
+                return false;
             }
 
             int j = m - 1;
@@ -20,7 +24,7 @@ namespace server{
                 {
                     if (j == 0)
                     {
-                        return i; 
+                        return true; 
                     }
                     else
                     {
@@ -36,11 +40,11 @@ namespace server{
                 }
             } while (i <= n - 1);
 
-            return -1; 
+            return false; 
         }
         public static int[] BuildLast(string pattern)
         {
-            int[] last = new int[128];
+            int[] last = new int[pattern.Length];
             for (int i = 0; i < 128; i++)
             {
                 last[i] = -1; 

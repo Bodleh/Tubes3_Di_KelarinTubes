@@ -2,11 +2,11 @@ namespace server
 {
     public class SearchRequest
     {
-        public byte[]? Data { get; set; }
+        public string? Data { get; set; }
     }
 
     public class SearchResult
     {
-        public SidikJari? SidikJari { get; set; }
+        public List<SidikJari> SidikJari { get; set; }
     }
 }

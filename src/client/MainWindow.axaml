@@ -29,6 +29,9 @@
                 <Setter Property="HorizontalAlignment" Value="Center"/>
             </Style>
         </Style>
+        <!-- <Style Selector="TextBlock">
+            <Setter Property="Text" Value="123 ms"/>
+        </Style> -->
     </Window.Styles>
     <Border Background="Tan">
         <Grid RowDefinitions="Auto,Auto,*, Auto, Auto" ColumnDefinitions="*,*,*">
@@ -57,7 +60,7 @@
                 <Button Name="ChooseFileButton" Margin="5" Background="Gold" Click="ChooseFileButton_Click" Width="100" HorizontalAlignment="Center">
                     <TextBlock Text="Pilih Citra" HorizontalAlignment="Center" Foreground="Black" FontWeight="700"/>
                 </Button>
-                <ToggleButton Width="100" IsChecked="{Binding IsBMAlgorithm}">
+                <ToggleButton Width="100" IsChecked="{Binding IsKMPAlgorithm}">
                     <TextBlock Foreground="Black" HorizontalAlignment="Center" FontWeight="700"/>
                 </ToggleButton>
                 <Button Name="SearchButton" Margin="5" Background="MediumSeaGreen" Click="SearchButton_Click" Width="100">

@@ -2,8 +2,11 @@ namespace server
 {
     public static class KnuthMorrisPratt
     {
-        public static int KMPSearch(string text, string pattern)
-        {
+        public static bool KMPSearch(string text, string pattern)
+        {   
+            if (pattern.Length > text.Length) {
+                (pattern, text) = (text, pattern);
+            }
             int n = text.Length;
             int m = pattern.Length;
             int[] b = ComputeBorder(pattern);
@@ -15,7 +18,7 @@ namespace server
                 if (pattern[j] == text[i])
                 {
                     if (j == m - 1)
-                        return i - m + 1;
+                        return true;
                     i++;
                     j++;
                 }
@@ -24,10 +27,10 @@ namespace server
                 else
                     i++;
             }
-            return -1;
+            return false;
         }
 
-        public static int[] ComputeBorder(string pattern)
+        private static int[] ComputeBorder(string pattern)
         {
             int m = pattern.Length;
             int[] b = new int[m];

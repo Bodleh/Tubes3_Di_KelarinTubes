@@ -97,17 +97,13 @@ namespace server.Controllers
                     foreach (var part in normalizedRealnameParts)
                     {
                         if (request.IsBM==null || request.IsBM==true)
-                        {
-                            int matchIndex = BoyerMoore.BMSearch(normalizedName, part);                            
-                            if (matchIndex != -1)
-                            {
+                        {   
+                            if (BoyerMoore.BMSearch(normalizedName, part)) {
                                 matchesList.Add(biodata);
                                 break;
                             }
                         } else {
-                            int matchIndex = KnuthMorrisPratt.KMPSearch(normalizedName, part);
-                            if (matchIndex != -1)
-                            {
+                            if (KnuthMorrisPratt.KMPSearch(normalizedName, part)) {
                                 matchesList.Add(biodata);
                                 break;
                             }
