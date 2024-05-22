@@ -15,23 +15,23 @@
         <Style Selector="ToggleButton:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="DarkGray"/>
         </Style>
-        <Style Selector="ToggleButton:checked">
-            <Setter Property="Background" Value="Crimson"/>
-            <Style Selector="^ TextBlock">
-                <Setter Property="Text" Value="KMP"/>
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-            </Style>
-        </Style>
         <Style Selector="ToggleButton">
-            <Setter Property="Background" Value="LightSkyBlue"/>
+            <Setter Property="Background" Value="Crimson"/>
             <Style Selector="^ TextBlock">
                 <Setter Property="Text" Value="BM"/>
                 <Setter Property="HorizontalAlignment" Value="Center"/>
             </Style>
         </Style>
+        <Style Selector="ToggleButton:checked">
+            <Setter Property="Background" Value="LightSkyBlue"/>
+            <Style Selector="^ TextBlock">
+                <Setter Property="Text" Value="KMP"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+            </Style>
+        </Style>
     </Window.Styles>
     <Border Background="Tan">
-        <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="*,*,*">
+        <Grid RowDefinitions="Auto,Auto,*, Auto, Auto" ColumnDefinitions="*,*,*">
             <TextBlock Grid.Row="0" Grid.ColumnSpan="3" 
                     Text="Pattern Matching Based on Fingerprint"
                     HorizontalAlignment="Center" VerticalAlignment="Top" 
@@ -39,33 +39,34 @@
                     Padding="40"/>
 
             <!-- Image placeholders -->
-            <Border Grid.Row="1" Grid.Column="0" Margin="30, 0, 30, 30" Background="LightGray">
+            <TextBlock Grid.Row = "1" Grid.Column = "0" Text="Sidik Jari Masukan" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="900" Margin="0, 0, 0, 10"/>
+            <Border Grid.Row="2" Grid.Column="0" Margin="30, 0, 30, 30" Background="LightGray">
                 <Image Name="InputImage" Width="350" Height="350" Stretch="Uniform"/>
             </Border>
-            <Border Grid.Row="1" Grid.Column="1" Margin="30, 0, 30, 30" Background="LightGray">
-                <TextBlock Text="Sidik Jari Cocok" Foreground="Black" HorizontalAlignment="Center" 
-                VerticalAlignment="Center" FontWeight="900"/>
+            <TextBlock Grid.Row = "1" Grid.Column = "1" Text="Sidik Jari Cocok" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="900" Margin="0, 0, 0, 10"/>
+            <Border Grid.Row="2" Grid.Column="1" Margin="30, 0, 30, 30" Background="LightGray">
+
             </Border>
-            <Border Grid.Row="1" Grid.Column="2" Margin="30, 0, 30, 30" Background="LightGray">
-                <TextBlock Text="List Biodata" Foreground="Black" HorizontalAlignment="Center" 
-                VerticalAlignment="Center" FontWeight="900"/>
+            <TextBlock Grid.Row = "1" Grid.Column="2" Text="List Biodata" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="900" Margin="0, 0, 0, 10"/>
+            <Border Grid.Row="2" Grid.Column="2" Margin="30, 0, 30, 30" Background="LightGray">
+
             </Border>
 
             <!-- Button Panel -->
-            <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
-                <Button Name="ChooseFileButton" Margin="5" Background="Gold" Click="ChooseFileButton_Click" Foreground="Black" FontWeight="600" Width="100" HorizontalAlignment="Center">
-                    <TextBlock Text="Pilih Citra" HorizontalAlignment="Center"/>
+            <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                <Button Name="ChooseFileButton" Margin="5" Background="Gold" Click="ChooseFileButton_Click" Width="100" HorizontalAlignment="Center">
+                    <TextBlock Text="Pilih Citra" HorizontalAlignment="Center" Foreground="Black" FontWeight="700"/>
                 </Button>
-                <ToggleButton Width="100" IsChecked="{Binding IsBMAlgorithm}" Background="Crimson">
-                    <TextBlock Foreground="Black" FontWeight="600" HorizontalAlignment="Center"/>
+                <ToggleButton Width="100" IsChecked="{Binding IsBMAlgorithm}">
+                    <TextBlock Foreground="Black" HorizontalAlignment="Center" FontWeight="700"/>
                 </ToggleButton>
-                <Button Name="SearchButton" Margin="5" Background="MediumSeaGreen" Click="SearchButton_Click" Foreground="Black" FontWeight="600" Width="100">
-                    <TextBlock Text="Search" HorizontalAlignment="Center"/>
+                <Button Name="SearchButton" Margin="5" Background="MediumSeaGreen" Click="SearchButton_Click" Width="100">
+                    <TextBlock Text="Search" HorizontalAlignment="Center" Foreground="Black" FontWeight="700"/>
                 </Button>
             </StackPanel>
 
             <!-- Search results -->
-            <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Orientation="Vertical" HorizontalAlignment="Center" Margin="20">
+            <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Vertical" HorizontalAlignment="Center" Margin="20, 0, 20, 20">
                 <TextBlock Name="ApiDataText" Margin="5" Foreground="Black" FontWeight="600"/>
                 <TextBlock Name="SearchTimeText" Text="Waktu Pencarian              : xxx ms" Margin="5" 
                 Foreground="Black" FontWeight="600"/>
