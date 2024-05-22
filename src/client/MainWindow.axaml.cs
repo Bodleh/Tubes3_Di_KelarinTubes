@@ -23,7 +23,7 @@ namespace client
         private byte[]? _fileData;
         private Bitmap? _selectedImage;
 
-        public bool IsBMAlgorithm { get; set; } = true;
+        public bool IsKMPAlgorithm { get; set; } = true;
 
         public MainWindow()
         {
@@ -51,7 +51,8 @@ namespace client
             var result = await ((TopLevel)this).StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select a file",
-                AllowMultiple = false
+                AllowMultiple = false,
+                FileTypeFilter = new [] {FilePickerFileTypes.ImageAll}
             });
 
             if (result != null && result.Any())
@@ -119,7 +120,7 @@ namespace client
                 return;
             }
 
-            string binaryData = ConvertToBinaryString(_fileData);
+            string binaryData = Convert.ToBase64String(_fileData);
 
             var requestBody = new
             {
@@ -132,7 +133,7 @@ namespace client
 
             try
             {
-                var endpoint = IsBMAlgorithm ? "http://localhost:5099/api/bm" : "http://localhost:5099/api/kmp";
+                var endpoint = IsKMPAlgorithm ? "http://localhost:5099/api/kmp" : "http://localhost:5099/api/bm";
                 var response = await _client.PostAsync(endpoint, content);
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadAsStringAsync();
