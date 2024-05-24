@@ -1,13 +1,17 @@
-namespace server{
+using System.Collections.Generic;
+
+namespace server
+{
     public static class BoyerMoore
     {
         public static bool BMSearch(string text, string pattern)
         {   
-            if (pattern.Length > text.Length) {
+            if (pattern.Length > text.Length) 
+            {
                 (pattern, text) = (text, pattern);
             }
             
-            int[] last = BuildLast(pattern);
+            Dictionary<char, int> last = BuildLast(pattern);
             int n = text.Length;
             int m = pattern.Length;
             int i = m - 1;
@@ -34,7 +38,7 @@ namespace server{
                 }
                 else
                 {
-                    int lo = last[text[i]]; 
+                    int lo = last.ContainsKey(text[i]) ? last[text[i]] : -1; 
                     i = i + m - Math.Min(j, 1 + lo);
                     j = m - 1;
                 }
@@ -42,17 +46,16 @@ namespace server{
 
             return false; 
         }
-        public static int[] BuildLast(string pattern)
+
+        public static Dictionary<char, int> BuildLast(string pattern)
         {
-            int[] last = new int[pattern.Length];
-            for (int i = 0; i < 128; i++)
-            {
-                last[i] = -1; 
-            }
+            Dictionary<char, int> last = new Dictionary<char, int>();
+
             for (int i = 0; i < pattern.Length; i++)
             {
                 last[pattern[i]] = i;
             }
+            
             return last;
         }
     }

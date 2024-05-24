@@ -3,9 +3,13 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.Controls.Shapes; // Using Shapes for Ellipse
+using server;
+using IOPath = System.IO.Path; // Alias for System.IO.Path
 using System;
 using System.IO;
 using System.Linq;
@@ -22,6 +26,9 @@ namespace client
         private HttpClient _client = new HttpClient();
         private byte[]? _fileData;
         private Bitmap? _selectedImage;
+        private DispatcherTimer _animationTimer;
+        private RotateTransform _rotateTransform;
+        private double _rotationAngle = 0;
 
         public bool IsKMPAlgorithm { get; set; } = true;
 
@@ -32,6 +39,25 @@ namespace client
             this.AttachDevTools();
 #endif
             DataContext = this;
+
+            var loadingEllipse = this.FindControl<Ellipse>("LoadingEllipse");
+            if (loadingEllipse != null)
+            {
+                _rotateTransform = loadingEllipse.RenderTransform as RotateTransform;
+            }
+            
+            _animationTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(30)
+            };
+            _animationTimer.Tick += (s, e) =>
+            {
+                _rotationAngle = (_rotationAngle + 5) % 360;
+                if (_rotateTransform != null)
+                {
+                    _rotateTransform.Angle = _rotationAngle;
+                }
+            };
         }
 
         private void InitializeComponent()
@@ -80,7 +106,7 @@ namespace client
             var apiDataText = this.FindControl<TextBlock>("ApiDataText");
             if (apiDataText != null)
             {
-                apiDataText.Text = $"File selected: {Path.GetFileName(filePath)}";
+                apiDataText.Text = $"File selected: {IOPath.GetFileName(filePath)}"; // Using alias for System.IO.Path
             }
 
             // Read the file as a byte array
@@ -110,6 +136,11 @@ namespace client
         private async void SearchButton_Click(object? sender, RoutedEventArgs e)
         {
             var apiDataText = this.FindControl<TextBlock>("ApiDataText");
+            var searchTimeText = this.FindControl<TextBlock>("SearchTimeText");
+            var accuracyText = this.FindControl<TextBlock>("AccuracyText");
+            var biodataPanel = this.FindControl<StackPanel>("BiodataPanel");
+            var outputImage = this.FindControl<Image>("OutputImage");
+            var loadingOverlay = this.FindControl<Border>("LoadingOverlay");
 
             if (_fileData == null)
             {
@@ -131,29 +162,144 @@ namespace client
             var content = new StringContent(json);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+
             try
             {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    loadingOverlay?.SetValue(IsVisibleProperty, true);
+                    _animationTimer.Start();
+                });
+                
                 var endpoint = IsKMPAlgorithm ? "http://localhost:5099/api/kmp" : "http://localhost:5099/api/bm";
                 var response = await _client.PostAsync(endpoint, content);
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadAsStringAsync();
 
-                Dispatcher.UIThread.Post(() =>
+                var searchResult = JsonSerializer.Deserialize<SearchResult>(responseBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var realname = searchResult?.SidikJari?.Nama;
+                var matchPercentage = searchResult?.MatchPercentage ?? 0;
+                var imagePath = searchResult?.SidikJari?.BerkasCitra != null ? IOPath.Combine("..", "..", searchResult.SidikJari.BerkasCitra) : null;
+                if (realname != null)
                 {
-                    if (apiDataText != null)
+                    var secondRequestBody = new StringRequest
                     {
-                        apiDataText.Text = $"Response: {responseBody}";
-                    }
-                });
+                        Realname = realname,
+                        IsKMP = IsKMPAlgorithm
+                    };
+
+                    var secondJson = JsonSerializer.Serialize(secondRequestBody);
+                    var secondContent = new StringContent(secondJson);
+                    secondContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+                    var secondEndpoint = "http://localhost:5099/api/biosearch";
+                    var secondResponse = await _client.PostAsync(secondEndpoint, secondContent);
+                    secondResponse.EnsureSuccessStatusCode();
+                    var secondResponseBody = await secondResponse.Content.ReadAsStringAsync();
+
+                    var biodataResponse = JsonSerializer.Deserialize<StringResult>(secondResponseBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    stopwatch.Stop();
+                    var elapsedMs = stopwatch.ElapsedMilliseconds;
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (searchTimeText != null)
+                        {
+                            searchTimeText.Text = $"Waktu Pencarian: {elapsedMs} ms";
+                        }
+
+                        if (accuracyText != null)
+                        {
+                            accuracyText.Text = $"Persentase Kecocokan: {matchPercentage}%";
+                        }
+
+                        if (biodataPanel != null && biodataResponse != null)
+                        {
+                            var nikText = this.FindControl<TextBlock>("NikText");
+                            var namaText = this.FindControl<TextBlock>("NamaText");
+                            var tempatLahirText = this.FindControl<TextBlock>("TempatLahirText");
+                            var tanggalLahirText = this.FindControl<TextBlock>("TanggalLahirText");
+                            var jenisKelaminText = this.FindControl<TextBlock>("JenisKelaminText");
+                            var golonganDarahText = this.FindControl<TextBlock>("GolonganDarahText");
+                            var alamatText = this.FindControl<TextBlock>("AlamatText");
+                            var agamaText = this.FindControl<TextBlock>("AgamaText");
+                            var statusPerkawinanText = this.FindControl<TextBlock>("StatusPerkawinanText");
+                            var pekerjaanText = this.FindControl<TextBlock>("PekerjaanText");
+                            var kewarganegaraanText = this.FindControl<TextBlock>("KewarganegaraanText");
+
+                            if (nikText != null)
+                                nikText.Text = $"NIK: {biodataResponse.Biodata?.NIK ?? "N/A"}";
+                            if (namaText != null)
+                                namaText.Text = $"Nama: {realname ?? "N/A"}";
+                            if (tempatLahirText != null)
+                                tempatLahirText.Text = $"Tempat Lahir: {biodataResponse.Biodata?.TempatLahir ?? "N/A"}";
+                            if (tanggalLahirText != null)
+                                tanggalLahirText.Text = $"Tanggal Lahir: {(biodataResponse.Biodata?.TanggalLahir.HasValue == true ? biodataResponse.Biodata.TanggalLahir.Value.ToString("yyyy-MM-dd") : "N/A")}";
+                            if (jenisKelaminText != null)
+                                jenisKelaminText.Text = $"Jenis Kelamin: {biodataResponse.Biodata?.JenisKelamin ?? "N/A"}";
+                            if (golonganDarahText != null)
+                                golonganDarahText.Text = $"Golongan Darah: {biodataResponse.Biodata?.GolonganDarah ?? "N/A"}";
+                            if (alamatText != null)
+                                alamatText.Text = $"Alamat: {biodataResponse.Biodata?.Alamat ?? "N/A"}";
+                            if (agamaText != null)
+                                agamaText.Text = $"Agama: {biodataResponse.Biodata?.Agama ?? "N/A"}";
+                            if (statusPerkawinanText != null)
+                                statusPerkawinanText.Text = $"Status Perkawinan: {biodataResponse.Biodata?.StatusPerkawinan ?? "N/A"}";
+                            if (pekerjaanText != null)
+                                pekerjaanText.Text = $"Pekerjaan: {biodataResponse.Biodata?.Pekerjaan ?? "N/A"}";
+                            if (kewarganegaraanText != null)
+                                kewarganegaraanText.Text = $"Kewarganegaraan: {biodataResponse.Biodata?.Kewarganegaraan ?? "N/A"}";
+                        }
+                        
+                        if (outputImage != null && imagePath != null)
+                        {
+                            outputImage.Source = new Bitmap(imagePath);
+                        }
+
+                        loadingOverlay?.SetValue(IsVisibleProperty, false);
+                        _animationTimer.Stop();
+                    });
+                }
+                else
+                {
+                    stopwatch.Stop();
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (apiDataText != null)
+                        {
+                            apiDataText.Text = $"Error: sidikjari name not found in the response.";
+                        }
+
+                        if (searchTimeText != null)
+                        {
+                            searchTimeText.Text = $"Waktu Pencarian: {stopwatch.ElapsedMilliseconds} ms";
+                        }
+
+                        loadingOverlay?.SetValue(IsVisibleProperty, false);
+                        _animationTimer.Stop();
+                    });
+                }
             }
             catch (HttpRequestException ex)
             {
+                stopwatch.Stop();
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (apiDataText != null)
                     {
                         apiDataText.Text = $"Error: {ex.Message}";
                     }
+
+                    if (searchTimeText != null)
+                    {
+                        searchTimeText.Text = $"Waktu Pencarian: {stopwatch.ElapsedMilliseconds} ms";
+                    }
+
+                    loadingOverlay?.SetValue(IsVisibleProperty, false);
+                    _animationTimer.Stop();
                 });
             }
         }

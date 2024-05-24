@@ -39,6 +39,7 @@ namespace server.Controllers
 
             return sb.ToString();
         }
+
         private string FindBestPixelSegment(byte[] imagePixels, int pixelCount)
         {
             int totalPixels = imagePixels.Length;
@@ -46,11 +47,8 @@ namespace server.Controllers
             int startIndex = Math.Max(0, middleIndex - pixelCount / 2);
             int endIndex = Math.Min(totalPixels, startIndex + pixelCount);
 
-            // extract
             byte[] segment = imagePixels.Skip(startIndex).Take(endIndex - startIndex).ToArray();
-
-            // convert each pixel to 8-bit binary string
-            StringBuilder binaryStringBuilder = new StringBuilder();
+            StringBuilder binaryStringBuilder = new StringBuilder(segment.Length * 8);
             foreach (var pixel in segment)
             {
                 binaryStringBuilder.Append(Convert.ToString(pixel, 2).PadLeft(8, '0'));
@@ -63,17 +61,13 @@ namespace server.Controllers
         {
             using (Image<Rgba32> image = Image.Load<Rgba32>(imageData))
             {
+                image.Mutate(x => x.Resize(image.Width / 4, image.Height / 4)); // Resize to reduce data size
                 image.Mutate(x => x.Grayscale());
-                return ConvertImageToByteArray(image);
-            }
-        }
-
-        private byte[] ConvertImageToByteArray(Image<Rgba32> image)
-        {
-            using (MemoryStream ms = new MemoryStream())
-            {
-                image.SaveAsBmp(ms);
-                return ms.ToArray();
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    image.SaveAsBmp(ms);
+                    return ms.ToArray();
+                }
             }
         }
 
@@ -99,6 +93,7 @@ namespace server.Controllers
             {
                 return BadRequest(new { message = "Invalid base64 data" });
             }
+
             var bestSegment = FindBestPixelSegment(fileData, 200);
             _logger.LogInformation("Segment data length: " + bestSegment.Length);
 
@@ -120,48 +115,64 @@ namespace server.Controllers
             {
                 return StatusCode((int)response.StatusCode, new { message = "Bad Request" });
             }
-            HashSet<SidikJari> SetFound = new HashSet<SidikJari>();
-            // SidikJari? closest = null;
-            // int smallest = int.MaxValue;
 
-            foreach (var item in sidikJariList)
+            SidikJari? bestMatch = null;
+            int bestMatchPercentage = 0;
+
+            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            var lockObj = new object();
+
+            await Task.Run(() => Parallel.ForEach(sidikJariList, parallelOptions, item =>
             {
                 if (!string.IsNullOrEmpty(item.BerkasCitra))
                 {
                     var filePath = item.BerkasCitra;
-                    var realpath = "../" + "../" + filePath;
+                    var realpath = Path.Combine("../", "../", filePath);
 
                     if (System.IO.File.Exists(realpath))
                     {
-                        byte[] originalBytes = await System.IO.File.ReadAllBytesAsync(realpath);
+                        byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
                         byte[] grayBytes = ConvertImageToGrayscaleByteArray(originalBytes);
                         string itemBinary = ConvertToBinaryString(grayBytes);
                         string text = ConvertBinaryStringToAscii(itemBinary);
                         string pattern = ConvertBinaryStringToAscii(bestSegment);
 
-                        if (!SetFound.Contains(item) && BoyerMoore.BMSearch(pattern, text)) {
-                            SetFound.Add(item);
+                        if (BoyerMoore.BMSearch(text, pattern))
+                        {
+                            lock (lockObj)
+                            {
+                                bestMatch = item;
+                                bestMatchPercentage = 100;
+                            }
+                            parallelOptions.CancellationToken.ThrowIfCancellationRequested();
                         }
-                        // else {
-                        //     int totalDistance = LevenshteinDistance.Compute(text, pattern);
-                        //     if (totalDistance < smallest) {
-                        //         smallest = totalDistance;
-                        //         closest = item;
-                        //     }
-                        // }
-                    }
-                    else
-                    {
-                        item.BerkasCitra = null;
+                        else
+                        {
+                            int distance = LevenshteinDistance.Compute(text, pattern);
+                            int maxLength = Math.Max(text.Length, pattern.Length);
+                            double similarity = 1.0 - (double)distance / maxLength;
+                            int matchPercentage = (int)(similarity * 100);
+
+                            lock (lockObj)
+                            {
+                                if (bestMatch == null || matchPercentage > bestMatchPercentage)
+                                {
+                                    bestMatch = item;
+                                    bestMatchPercentage = matchPercentage;
+                                }
+                            }
+                        }
                     }
                 }
+            }), parallelOptions.CancellationToken);
+
+            if (bestMatch != null)
+            {
+                _logger.LogInformation($"Found match with {bestMatchPercentage}% similarity");
+                return Ok(new SearchResult { SidikJari = bestMatch, MatchPercentage = bestMatchPercentage });
             }
-            // if (SetFound.Count == 0 && closest != null) {
-            //     SetFound.Add(closest);
-            // }
-            List<SidikJari> ListFound = SetFound.ToList();
-            _logger.LogInformation("Found data length: " + ListFound.Count);
-            return Ok(new SearchResult { SidikJari = ListFound });
+
+            return Ok(new { message = "No matching data found" });
         }
     }
 }

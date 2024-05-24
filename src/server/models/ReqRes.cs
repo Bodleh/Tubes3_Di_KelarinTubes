@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace server
 {
     public class SearchRequest
@@ -5,8 +7,13 @@ namespace server
         public string? Data { get; set; }
     }
 
+
     public class SearchResult
     {
-        public List<SidikJari> SidikJari { get; set; }
+        [JsonPropertyName("sidikJari")]
+        public SidikJari? SidikJari { get; set; }
+        
+        [JsonPropertyName("matchPercentage")]
+        public int MatchPercentage { get; set; }
     }
 }

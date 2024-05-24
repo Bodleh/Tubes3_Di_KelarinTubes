@@ -3,7 +3,7 @@ namespace server
     public class StringRequest
     {
         public string? Realname { get; set; }
-        public bool? IsBM { get; set; }
+        public bool? IsKMP { get; set; }
     }
 
     public class StringResult

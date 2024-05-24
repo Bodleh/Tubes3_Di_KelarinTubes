@@ -96,14 +96,14 @@ namespace server.Controllers
 
                     foreach (var part in normalizedRealnameParts)
                     {
-                        if (request.IsBM==null || request.IsBM==true)
+                        if (request.IsKMP==null || request.IsKMP==true)
                         {   
-                            if (BoyerMoore.BMSearch(normalizedName, part)) {
+                            if (KnuthMorrisPratt.KMPSearch(normalizedName, part)) {
                                 matchesList.Add(biodata);
                                 break;
                             }
                         } else {
-                            if (KnuthMorrisPratt.KMPSearch(normalizedName, part)) {
+                            if (BoyerMoore.BMSearch(normalizedName, part)) {
                                 matchesList.Add(biodata);
                                 break;
                             }
@@ -150,7 +150,7 @@ namespace server.Controllers
 
             if (closestMatch != null)
             {
-                return Ok(new { data = closestMatch });
+                return Ok(new StringResult { Biodata = closestMatch });
             }
             else
             {
