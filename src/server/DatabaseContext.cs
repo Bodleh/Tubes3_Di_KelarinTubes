@@ -15,6 +15,8 @@ namespace server
         public DbSet<Biodata> Biodata { get; set; }
         public DbSet<SidikJari> SidikJari { get; set; }
 
+        public DbSet<EncryptedBiodata> EncryptedBiodata { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SidikJari>()

@@ -103,11 +103,6 @@ namespace client
 
         private async Task HandleFile(string filePath)
         {
-            var apiDataText = this.FindControl<TextBlock>("ApiDataText");
-            if (apiDataText != null)
-            {
-                apiDataText.Text = $"File selected: {IOPath.GetFileName(filePath)}"; // Using alias for System.IO.Path
-            }
 
             // Read the file as a byte array
             _fileData = await File.ReadAllBytesAsync(filePath);
@@ -123,14 +118,20 @@ namespace client
             }
         }
 
-        private string ConvertToBinaryString(byte[] data)
+        private string TruncateText(string text, int lengthLimit)
         {
-            StringBuilder binaryString = new StringBuilder();
-            foreach (byte b in data)
+            if (string.IsNullOrWhiteSpace(text))
             {
-                binaryString.Append(Convert.ToString(b, 2).PadLeft(8, '0'));
+                return new string(' ', lengthLimit);
             }
-            return binaryString.ToString();
+
+            if (text.Length <= lengthLimit)
+            {
+                return text;
+            }
+
+            string truncatedText = text.Substring(0, lengthLimit - 3);
+            return truncatedText + "...";
         }
 
         private async void SearchButton_Click(object? sender, RoutedEventArgs e)
@@ -231,27 +232,35 @@ namespace client
                             var kewarganegaraanText = this.FindControl<TextBlock>("KewarganegaraanText");
 
                             if (nikText != null)
-                                nikText.Text = $"NIK: {biodataResponse.Biodata?.NIK ?? "N/A"}";
+                                nikText.Text = $"{biodataResponse.Biodata?.NIK ?? "N/A"}";
                             if (namaText != null)
-                                namaText.Text = $"Nama: {realname ?? "N/A"}";
+                                namaText.Text = $"{realname ?? "N/A"}";
                             if (tempatLahirText != null)
-                                tempatLahirText.Text = $"Tempat Lahir: {biodataResponse.Biodata?.TempatLahir ?? "N/A"}";
-                            if (tanggalLahirText != null)
-                                tanggalLahirText.Text = $"Tanggal Lahir: {(biodataResponse.Biodata?.TanggalLahir.HasValue == true ? biodataResponse.Biodata.TanggalLahir.Value.ToString("yyyy-MM-dd") : "N/A")}";
+                            {
+                                var truncatedTempatLahir = TruncateText(biodataResponse.Biodata?.TempatLahir ?? "N/A", 15);
+                                var formattedTanggalLahir = biodataResponse.Biodata?.TanggalLahir.HasValue == true 
+                                    ? biodataResponse.Biodata.TanggalLahir.Value.ToString("dd-MM-yyyy") 
+                                    : "N/A";
+                                tempatLahirText.Text = $"{truncatedTempatLahir}, {formattedTanggalLahir}";
+                            }
+                            // if (tanggalLahirText != null)
+                            //     tanggalLahirText.Text = $"{(biodataResponse.Biodata?.TanggalLahir.HasValue == true ? biodataResponse.Biodata.TanggalLahir.Value.ToString("yyyy-MM-dd") : "N/A")}";
                             if (jenisKelaminText != null)
-                                jenisKelaminText.Text = $"Jenis Kelamin: {biodataResponse.Biodata?.JenisKelamin ?? "N/A"}";
+                                jenisKelaminText.Text = $"{biodataResponse.Biodata?.JenisKelamin ?? "N/A"}";
                             if (golonganDarahText != null)
-                                golonganDarahText.Text = $"Golongan Darah: {biodataResponse.Biodata?.GolonganDarah ?? "N/A"}";
+                                golonganDarahText.Text = $"{biodataResponse.Biodata?.GolonganDarah ?? "N/A"}";
                             if (alamatText != null)
-                                alamatText.Text = $"Alamat: {biodataResponse.Biodata?.Alamat ?? "N/A"}";
+                                alamatText.Text = $"{biodataResponse.Biodata?.Alamat ?? "N/A"}";
                             if (agamaText != null)
-                                agamaText.Text = $"Agama: {biodataResponse.Biodata?.Agama ?? "N/A"}";
+                                agamaText.Text = $"{biodataResponse.Biodata?.Agama ?? "N/A"}";
                             if (statusPerkawinanText != null)
-                                statusPerkawinanText.Text = $"Status Perkawinan: {biodataResponse.Biodata?.StatusPerkawinan ?? "N/A"}";
-                            if (pekerjaanText != null)
-                                pekerjaanText.Text = $"Pekerjaan: {biodataResponse.Biodata?.Pekerjaan ?? "N/A"}";
+                                statusPerkawinanText.Text = $"{biodataResponse.Biodata?.StatusPerkawinan ?? "N/A"}";
+                            if (pekerjaanText != null){
+                                var pekerjaanTextContent = biodataResponse.Biodata?.Pekerjaan ?? "N/A";
+                                pekerjaanText.Text = TruncateText(pekerjaanTextContent, 30);
+                            }
                             if (kewarganegaraanText != null)
-                                kewarganegaraanText.Text = $"Kewarganegaraan: {biodataResponse.Biodata?.Kewarganegaraan ?? "N/A"}";
+                                kewarganegaraanText.Text = $"{biodataResponse.Biodata?.Kewarganegaraan ?? "N/A"}";
                         }
                         
                         if (outputImage != null && imagePath != null)

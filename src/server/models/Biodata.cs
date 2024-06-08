@@ -49,4 +49,52 @@ namespace server
         [StringLength(50)]
         public string? Kewarganegaraan { get; set; }
     }
+
+    public class EncryptedBiodata
+    {
+        [JsonPropertyName("nik")]
+        [Key]
+        [StringLength(255)]
+        public string? NIK { get; set; }
+
+        [JsonPropertyName("nama")]
+        [StringLength(255)]
+        public string? Nama { get; set; }
+
+        [JsonPropertyName("tempatLahir")]
+        [StringLength(255)]
+        public string? TempatLahir { get; set; }
+        
+        [JsonPropertyName("tanggalLahir")]
+        [StringLength(255)]
+        public string? TanggalLahir { get; set; }
+
+        [JsonPropertyName("jenisKelamin")]
+        [StringLength(255)]
+        public string? JenisKelamin { get; set; }
+
+        [JsonPropertyName("golonganDarah")]
+        [StringLength(255)]
+        public string? GolonganDarah { get; set; }
+
+        [JsonPropertyName("alamat")]
+        [StringLength(25555)]
+        public string? Alamat { get; set; }
+
+        [JsonPropertyName("agama")]
+        [StringLength(255)]
+        public string? Agama { get; set; }
+
+        [JsonPropertyName("statusPerkawinan")]
+        [StringLength(255)]
+        public string? StatusPerkawinan { get; set; }
+
+        [JsonPropertyName("pekerjaan")]
+        [StringLength(255)]
+        public string? Pekerjaan { get; set; }
+
+        [JsonPropertyName("kewarganegaraan")]
+        [StringLength(255)]
+        public string? Kewarganegaraan { get; set; }
+    }
 }

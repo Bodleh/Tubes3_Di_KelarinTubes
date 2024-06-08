@@ -19,10 +19,10 @@ namespace server.Controllers
         }
 
         [HttpGet]
-        public IEnumerable<Biodata> Get()
+        public IEnumerable<EncryptedBiodata> Get()
         {
             _logger.LogInformation("Fetching all Biodata records");
-            return _context.Biodata.ToList();
+            return _context.EncryptedBiodata.ToList();
         }
     }
 }

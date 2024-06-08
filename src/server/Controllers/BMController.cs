@@ -24,7 +24,7 @@ namespace server.Controllers
 
         private string ConvertToBinaryString(byte[] data)
         {
-            return string.Join(string.Empty, data.Select(b => Convert.ToString(b, 2).PadLeft(8, '0')));
+            return string.Concat(data.Select(b => Convert.ToString(b, 2).PadLeft(8, '0')));
         }
 
         private string ConvertBinaryStringToAscii(string binaryString)
@@ -33,8 +33,7 @@ namespace server.Controllers
 
             for (int i = 0; i < binaryString.Length; i += 8)
             {
-                string byteString = binaryString.Substring(i, 8);
-                sb.Append((char)Convert.ToByte(byteString, 2));
+                sb.Append((char)Convert.ToByte(binaryString.Substring(i, 8), 2));
             }
 
             return sb.ToString();
@@ -43,26 +42,32 @@ namespace server.Controllers
         private string FindBestPixelSegment(byte[] imagePixels, int pixelCount)
         {
             int totalPixels = imagePixels.Length;
-            int middleIndex = totalPixels / 2;
-            int startIndex = Math.Max(0, middleIndex - pixelCount / 2);
-            int endIndex = Math.Min(totalPixels, startIndex + pixelCount);
+            int bestStartIndex = 0;
+            int bestIntensityVariation = int.MinValue;
 
-            byte[] segment = imagePixels.Skip(startIndex).Take(endIndex - startIndex).ToArray();
-            StringBuilder binaryStringBuilder = new StringBuilder(segment.Length * 8);
-            foreach (var pixel in segment)
+            for (int i = 0; i <= totalPixels - pixelCount; i++)
             {
-                binaryStringBuilder.Append(Convert.ToString(pixel, 2).PadLeft(8, '0'));
+                int intensityVariation = 0;
+                for (int j = i; j < i + pixelCount - 1; j++)
+                {
+                    intensityVariation += Math.Abs(imagePixels[j] - imagePixels[j + 1]);
+                }
+
+                if (intensityVariation > bestIntensityVariation)
+                {
+                    bestIntensityVariation = intensityVariation;
+                    bestStartIndex = i;
+                }
             }
 
-            return binaryStringBuilder.ToString();
+            return ConvertToBinaryString(imagePixels.Skip(bestStartIndex).Take(pixelCount).ToArray());
         }
 
         private byte[] ConvertImageToGrayscaleByteArray(byte[] imageData)
         {
             using (Image<Rgba32> image = Image.Load<Rgba32>(imageData))
             {
-                image.Mutate(x => x.Resize(image.Width / 4, image.Height / 4)); // Resize to reduce data size
-                image.Mutate(x => x.Grayscale());
+                image.Mutate(x => x.Resize(image.Width / 4, image.Height / 4).Grayscale());
                 using (MemoryStream ms = new MemoryStream())
                 {
                     image.SaveAsBmp(ms);
@@ -94,7 +99,7 @@ namespace server.Controllers
                 return BadRequest(new { message = "Invalid base64 data" });
             }
 
-            var bestSegment = FindBestPixelSegment(fileData, 200);
+            var bestSegment = FindBestPixelSegment(fileData, 80);
             _logger.LogInformation("Segment data length: " + bestSegment.Length);
 
             var client = _httpClientFactory.CreateClient();

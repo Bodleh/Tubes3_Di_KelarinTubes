@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Cryptography.Xml;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -64,7 +65,7 @@ namespace server.Controllers
                 return BadRequest(new { message = "Invalid request data" });
             }
 
-            _logger.LogInformation("Received a POST request to BM endpoint");
+            _logger.LogInformation("Received a POST request to BioSearch Endpoint");
 
             var client = _httpClientFactory.CreateClient();
             var response = await client.GetAsync("http://localhost:5099/api/biodata");
@@ -79,11 +80,26 @@ namespace server.Controllers
                 return StatusCode((int)response.StatusCode, new { message = "Bad Request" });
             }
 
-            var biodataList = JsonSerializer.Deserialize<List<Biodata>>(fetchResult);
-            if (biodataList == null)
+            var encryptedBiodataList = JsonSerializer.Deserialize<List<EncryptedBiodata>>(fetchResult);
+            if (encryptedBiodataList == null)
             {
                 return StatusCode((int)response.StatusCode, new { message = "Bad Request" });
             }
+
+            var biodataList = encryptedBiodataList.Select(eb => new Biodata
+            {
+                NIK = eb.NIK != null ? Decrypt.GetDecrypt(eb.NIK) : null,
+                Nama = eb.Nama != null ? Decrypt.GetDecrypt(eb.Nama) : null,
+                TempatLahir = eb.TempatLahir != null ? Decrypt.GetDecrypt(eb.TempatLahir) : null,
+                TanggalLahir = eb.TanggalLahir != null ? DateTime.Parse(Decrypt.GetDecrypt(eb.TanggalLahir)) : (DateTime?)null,
+                JenisKelamin = eb.JenisKelamin != null ? Decrypt.GetDecrypt(eb.JenisKelamin) : null,
+                GolonganDarah = eb.GolonganDarah != null ? Decrypt.GetDecrypt(eb.GolonganDarah) : null,
+                Alamat = eb.Alamat != null ? Decrypt.GetDecrypt(eb.Alamat) : null,
+                Agama = eb.Agama != null ? Decrypt.GetDecrypt(eb.Agama) : null,
+                StatusPerkawinan = eb.StatusPerkawinan != null ? Decrypt.GetDecrypt(eb.StatusPerkawinan) : null,
+                Pekerjaan = eb.Pekerjaan != null ? Decrypt.GetDecrypt(eb.Pekerjaan) : null,
+                Kewarganegaraan = eb.Kewarganegaraan != null ? Decrypt.GetDecrypt(eb.Kewarganegaraan) : null
+            }).ToList();
 
             var normalizedRealnameParts = NormalizeAndSplitName(request.Realname);
             List<Biodata> matchesList = new List<Biodata>();
