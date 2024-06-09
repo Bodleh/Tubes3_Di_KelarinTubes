@@ -51,6 +51,7 @@ namespace server.Controllers
             int segmentWidth = width * 3 / 5;
             string pattern = ImageConverter.FindBestPixelSegment(fileData, width, height, segmentWidth);
             string pattern2 = ImageConverter.FindBestPixelSegment(fileData2, width2, height2, segmentWidth);
+            string fullpattern = ImageConverter.ConvertByteToAsciiString(fileData2);
 
             var client = _httpClientFactory.CreateClient();
             var response = await client.GetAsync("http://localhost:5099/api/sidikjari");
@@ -72,7 +73,9 @@ namespace server.Controllers
             }
 
             SidikJari? bestMatch = null;
+            SidikJari? bestMatchlcs = null;
             int bestMatchPercentage = 0;
+            int bestMatchPercentagelcs = 0;
             var cts = new CancellationTokenSource();
             var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cts.Token };
             var lockObj = new object();
@@ -93,21 +96,18 @@ namespace server.Controllers
                             byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
                             (byte[] grayBytes, int imgWidth, int imgHeight) = ImageConverter.ConvertImageToGrayscaleByteArray(originalBytes, 2);
 
-                            for (int i = 0; i < imgHeight; i++)
-                            {
-                                string text = ImageConverter.FindBestPixelSegment(grayBytes, imgWidth, imgHeight, segmentWidth);
+                            string text = ImageConverter.ConvertByteToAsciiString(grayBytes);
 
-                                if (BoyerMoore.BMSearch(text, pattern))
+                            if (BoyerMoore.BMSearch(text, pattern))
+                            {
+                                lock (lockObj)
                                 {
-                                    lock (lockObj)
-                                    {
-                                        bestMatch = item;
-                                        bestMatchPercentage = 100;
-                                    }
-                                    cts.Cancel();
-                                    foundQuickMatch = true;
-                                    return;
+                                    bestMatch = item;
+                                    bestMatchPercentage = 100;
                                 }
+                                cts.Cancel();
+                                foundQuickMatch = true;
+                                return;
                             }
                         }
                     }
@@ -136,24 +136,24 @@ namespace server.Controllers
                                 byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
                                 (byte[] grayBytes, int imgWidth, int imgHeight) = ImageConverter.ConvertImageToGrayscaleByteArray(originalBytes);
 
-                                for (int i = 0; i < imgHeight; i++)
-                                {
-                                    string text = ImageConverter.FindBestPixelSegment(grayBytes, imgWidth, imgHeight, segmentWidth);
+                                string text = ImageConverter.ConvertByteToAsciiString(grayBytes);
 
-                                    if (BoyerMoore.BMSearch(text, pattern2))
+                                if (BoyerMoore.BMSearch(text, pattern2))
+                                {
+                                    lock (lockObj)
                                     {
-                                        lock (lockObj)
-                                        {
-                                            bestMatch = item;
-                                            bestMatchPercentage = 100;
-                                        }
-                                        cts.Cancel();
-                                        return;
+                                        bestMatch = item;
+                                        bestMatchPercentage = 100;
                                     }
-                                    else
+                                    cts.Cancel();
+                                    return;
+                                }
+                                else
+                                {
+                                    if (text.Length == fullpattern.Length)
                                     {
-                                        int lcsLength = LongestCommonSubsequence.Compute(text, pattern2);
-                                        double similarity = (double)lcsLength / Math.Min(text.Length, pattern2.Length);
+                                        int hammingDistance = Hamming.HammingDist(text, fullpattern);
+                                        double similarity = (double)(text.Length - hammingDistance) / text.Length;
                                         int matchPercentage = (int)(similarity * 100);
 
                                         lock (lockObj)
@@ -164,11 +164,46 @@ namespace server.Controllers
                                                 bestMatchPercentage = matchPercentage;
                                             }
                                         }
+
+                                        int lcsLength = LongestCommonSubsequence.Compute(text, pattern2);
+                                        similarity = (double)lcsLength / Math.Min(text.Length, pattern2.Length);
+                                        matchPercentage = (int)(similarity * 100);
+
+                                        lock (lockObj)
+                                        {
+                                            if (matchPercentage > bestMatchPercentage)
+                                            {
+                                                bestMatchlcs = item;
+                                                bestMatchPercentagelcs = matchPercentage;
+                                            }
+                                        }
+                                    } else {
+                                        int lcsLength = LongestCommonSubsequence.Compute(text, pattern2);
+                                        double similarity = (double)lcsLength / Math.Min(text.Length, pattern2.Length);
+                                        int matchPercentage = (int)(similarity * 100);
+
+                                        lock (lockObj)
+                                        {
+                                            if (matchPercentage > bestMatchPercentage)
+                                            {
+                                                bestMatchlcs = item;
+                                                bestMatchPercentagelcs = matchPercentage;
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }), parallelOptions.CancellationToken);
+
+                   lock (lockObj)
+                    {
+                        if (bestMatchPercentage < 40 && bestMatchPercentagelcs > bestMatchPercentage)
+                        {
+                            bestMatch = bestMatchlcs;
+                            bestMatchPercentage = bestMatchPercentagelcs;
+                        }
+                    }
                 }
                 catch (OperationCanceledException)
                 {
