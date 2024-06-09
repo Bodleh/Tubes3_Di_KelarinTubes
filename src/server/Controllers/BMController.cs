@@ -211,7 +211,7 @@ namespace server.Controllers
                 }
             }
 
-            if (bestMatch != null)
+            if (bestMatch != null && bestMatchPercentage >= 20)
             {
                 _logger.LogInformation($"Found match with {bestMatchPercentage}% similarity");
                 return Ok(new SearchResult { SidikJari = bestMatch, MatchPercentage = bestMatchPercentage });
