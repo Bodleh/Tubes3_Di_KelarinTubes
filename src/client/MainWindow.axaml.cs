@@ -143,11 +143,17 @@ namespace client
             var outputImage = this.FindControl<Image>("OutputImage");
             var loadingOverlay = this.FindControl<Border>("LoadingOverlay");
 
+            if (apiDataText != null)
+            {
+                apiDataText.IsVisible = false;
+            }
+
             if (_fileData == null)
             {
                 if (apiDataText != null)
                 {
                     apiDataText.Text = "No image chosen";
+                    apiDataText.IsVisible = true;
                 }
                 return;
             }
@@ -280,6 +286,7 @@ namespace client
                         if (apiDataText != null)
                         {
                             apiDataText.Text = $"Error: sidikjari name not found in the response.";
+                            apiDataText.IsVisible = true;
                         }
 
                         if (searchTimeText != null)
@@ -300,6 +307,7 @@ namespace client
                     if (apiDataText != null)
                     {
                         apiDataText.Text = $"Error: {ex.Message}";
+                        apiDataText.IsVisible = true;
                     }
 
                     if (searchTimeText != null)

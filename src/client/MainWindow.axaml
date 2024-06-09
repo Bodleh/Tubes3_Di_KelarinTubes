@@ -111,7 +111,8 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="10, 0, 10, 10">
-                    <TextBlock Name="ApiDataText" Margin="5" Foreground="Black" FontFamily="Montserrat" FontWeight="Bold"/>
+                    <TextBlock Name="ApiDataText" Margin="5" Foreground="Black" FontFamily="Montserrat" FontWeight="Bold"
+                    IsVisible="False"/>
                     <TextBlock Name="SearchTimeText" Text="Waktu Pencarian : xxx ms" Margin="5" Foreground="Black" FontFamily="Montserrat" FontWeight="Bold"/>
                     <TextBlock Name="AccuracyText" Text="Persentase Kecocokan : xx%" Margin="5" Foreground="Black" FontFamily="Montserrat" FontWeight="Bold"/>
                 </StackPanel>
