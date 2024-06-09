@@ -25,39 +25,65 @@ namespace server
             return sb.ToString();
         }
 
-        public static string FindBestPixelSegment(byte[] imagePixels, int pixelCount)
+        public static string FindBestPixelSegment(byte[] imagePixels, int imageWidth, int imageHeight, int segmentWidth)
         {
-            int totalPixels = imagePixels.Length;
             int bestStartIndex = 0;
-            int bestIntensityVariation = int.MinValue;
+            double bestRatioDifference = double.MaxValue;
 
-            for (int i = 0; i <= totalPixels - pixelCount; i++)
+            for (int row = 0; row < imageHeight; row++)
             {
-                int intensityVariation = 0;
-                for (int j = i; j < i + pixelCount - 1; j++)
+                int rowStartIndex = row * imageWidth;
+                for (int col = 0; col <= imageWidth - segmentWidth; col++)
                 {
-                    intensityVariation += Math.Abs(imagePixels[j] - imagePixels[j + 1]);
-                }
+                    int blackCount = 0;
+                    int whiteCount = 0;
 
-                if (intensityVariation > bestIntensityVariation)
-                {
-                    bestIntensityVariation = intensityVariation;
-                    bestStartIndex = i;
+                    for (int i = col; i < col + segmentWidth; i++)
+                    {
+                        if (imagePixels[rowStartIndex + i] == 0)
+                        {
+                            blackCount++;
+                        }
+                        else if (imagePixels[rowStartIndex + i] == 255)
+                        {
+                            whiteCount++;
+                        }
+                    }
+
+                    double totalPixels = blackCount + whiteCount;
+                    double ratioDifference = Math.Abs((blackCount / totalPixels) - 0.5);
+
+                    if (ratioDifference < bestRatioDifference)
+                    {
+                        bestRatioDifference = ratioDifference;
+                        bestStartIndex = rowStartIndex + col;
+                    }
                 }
             }
 
-            return ConvertByteToAsciiString(imagePixels.Skip(bestStartIndex).Take(pixelCount).ToArray());
+            return ConvertByteToAsciiString(imagePixels.Skip(bestStartIndex).Take(segmentWidth).ToArray());
         }
 
-        public static byte[] ConvertImageToGrayscaleByteArray(byte[] imageData)
+        public static (byte[], int, int) ConvertImageToGrayscaleByteArray(byte[] imageData, int scaleFactor = 1)
         {
             using (Image<Rgba32> image = Image.Load<Rgba32>(imageData))
             {
-                image.Mutate(x => x.Resize(image.Width / 4, image.Height / 4).Grayscale());
+                int width = image.Width / scaleFactor;
+                int height = image.Height / scaleFactor;
+
+                image.Mutate(x => x.Resize(width, height).Grayscale());
+
                 using (MemoryStream ms = new MemoryStream())
                 {
                     image.SaveAsBmp(ms);
-                    return ms.ToArray();
+                    ms.Seek(0, SeekOrigin.Begin);
+
+                    using (var img = Image.Load<L8>(ms))
+                    {
+                        var pixelData = new byte[img.Width * img.Height];
+                        img.CopyPixelDataTo(pixelData);
+                        return (pixelData, img.Width, img.Height);
+                    }
                 }
             }
         }

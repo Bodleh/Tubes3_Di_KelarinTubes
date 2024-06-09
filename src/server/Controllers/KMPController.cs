@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
-using System.Text;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
 
 namespace server.Controllers
 {
@@ -32,11 +33,13 @@ namespace server.Controllers
 
             _logger.LogInformation("Received a POST request to KMP endpoint");
 
-            byte[] fileData;
+            byte[] fileData,  fileData2;
+            int width, height, width2, height2;
             try
             {
                 byte[] original = Convert.FromBase64String(request.Data);
-                fileData = ImageConverter.ConvertImageToGrayscaleByteArray(original);
+                (fileData, width, height) = ImageConverter.ConvertImageToGrayscaleByteArray(original, 2);
+                (fileData2, width2, height2) = ImageConverter.ConvertImageToGrayscaleByteArray(original);
                 _logger.LogInformation("originalData: " + original.Length);
                 _logger.LogInformation("grayData: " + fileData.Length);
             }
@@ -45,7 +48,9 @@ namespace server.Controllers
                 return BadRequest(new { message = "Invalid base64 data" });
             }
 
-            string pattern = ImageConverter.FindBestPixelSegment(fileData, 50);
+            int segmentWidth = width * 3 / 5;
+            string pattern = ImageConverter.FindBestPixelSegment(fileData, width, height, segmentWidth);
+            string pattern2 = ImageConverter.FindBestPixelSegment(fileData2, width2, height2, segmentWidth);
 
             var client = _httpClientFactory.CreateClient();
             var response = await client.GetAsync("http://localhost:5099/api/sidikjari");
@@ -68,51 +73,108 @@ namespace server.Controllers
 
             SidikJari? bestMatch = null;
             int bestMatchPercentage = 0;
-
-            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            var cts = new CancellationTokenSource();
+            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cts.Token };
             var lockObj = new object();
 
-            await Task.Run(() => Parallel.ForEach(sidikJariList, parallelOptions, item =>
+            bool foundQuickMatch = false;
+
+            try
             {
-                if (!string.IsNullOrEmpty(item.BerkasCitra))
+                await Task.Run(() => Parallel.ForEach(sidikJariList, parallelOptions, (item, state) =>
                 {
-                    var filePath = item.BerkasCitra;
-                    var realpath = Path.Combine("../", "../", filePath);
-
-                    if (System.IO.File.Exists(realpath))
+                    if (!string.IsNullOrEmpty(item.BerkasCitra))
                     {
-                        byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
-                        byte[] grayBytes = ImageConverter.ConvertImageToGrayscaleByteArray(originalBytes);
-                        string text = ImageConverter.ConvertByteToAsciiString(grayBytes);
+                        var filePath = item.BerkasCitra;
+                        var realpath = Path.Combine("../", "../", filePath);
 
-                        if (KnuthMorrisPratt.KMPSearch(text, pattern))
+                        if (System.IO.File.Exists(realpath))
                         {
-                            lock (lockObj)
-                            {
-                                bestMatch = item;
-                                bestMatchPercentage = 100;
-                            }
-                            parallelOptions.CancellationToken.ThrowIfCancellationRequested();
-                        }
-                        else
-                        {
-                            int distance = LevenshteinDistance.Compute(text, pattern);
-                            int maxLength = Math.Max(text.Length, pattern.Length);
-                            double similarity = 1.0 - (double)distance / maxLength;
-                            int matchPercentage = (int)(similarity * 100);
+                            byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
+                            (byte[] grayBytes, int imgWidth, int imgHeight) = ImageConverter.ConvertImageToGrayscaleByteArray(originalBytes, 2);
 
-                            lock (lockObj)
+                            for (int i = 0; i < imgHeight; i++)
                             {
-                                if (bestMatch == null || matchPercentage > bestMatchPercentage)
+                                string text = ImageConverter.FindBestPixelSegment(grayBytes, imgWidth, imgHeight, segmentWidth);
+
+                                if (KnuthMorrisPratt.KMPSearch(text, pattern))
                                 {
-                                    bestMatch = item;
-                                    bestMatchPercentage = matchPercentage;
+                                    lock (lockObj)
+                                    {
+                                        bestMatch = item;
+                                        bestMatchPercentage = 100;
+                                    }
+                                    cts.Cancel();
+                                    foundQuickMatch = true;
+                                    return;
                                 }
                             }
                         }
                     }
+                }), parallelOptions.CancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Quick match found and search canceled.");
+            }
+
+            if (!foundQuickMatch)
+            {
+                _logger.LogInformation("No quick match found. Performing full image search...");
+
+                try
+                {
+                    await Task.Run(() => Parallel.ForEach(sidikJariList, parallelOptions, (item, state) =>
+                    {
+                        if (!string.IsNullOrEmpty(item.BerkasCitra))
+                        {
+                            var filePath = item.BerkasCitra;
+                            var realpath = Path.Combine("../", "../", filePath);
+
+                            if (System.IO.File.Exists(realpath))
+                            {
+                                byte[] originalBytes = System.IO.File.ReadAllBytes(realpath);
+                                (byte[] grayBytes, int imgWidth, int imgHeight) = ImageConverter.ConvertImageToGrayscaleByteArray(originalBytes);
+
+                                for (int i = 0; i < imgHeight; i++)
+                                {
+                                    string text = ImageConverter.FindBestPixelSegment(grayBytes, imgWidth, imgHeight, segmentWidth);
+
+                                    if (KnuthMorrisPratt.KMPSearch(text, pattern2))
+                                    {
+                                        lock (lockObj)
+                                        {
+                                            bestMatch = item;
+                                            bestMatchPercentage = 100;
+                                        }
+                                        cts.Cancel();
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        int lcsLength = LongestCommonSubsequence.Compute(text, pattern2);
+                                        double similarity = (double)lcsLength / Math.Min(text.Length, pattern2.Length);
+                                        int matchPercentage = (int)(similarity * 100);
+
+                                        lock (lockObj)
+                                        {
+                                            if (matchPercentage > bestMatchPercentage)
+                                            {
+                                                bestMatch = item;
+                                                bestMatchPercentage = matchPercentage;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }), parallelOptions.CancellationToken);
                 }
-            }), parallelOptions.CancellationToken);
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Full image match found and search canceled.");
+                }
+            }
 
             if (bestMatch != null)
             {
