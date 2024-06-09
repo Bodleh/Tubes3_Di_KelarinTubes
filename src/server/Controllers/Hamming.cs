@@ -1,8 +1,8 @@
 namespace server
 {
     public static class Hamming {
-        public static int hammingDist(string text, string pattern) 
-        { 
+        public static int HammingDist(string text, string pattern) 
+        {
             int i = 0, count = 0; 
             while (i < text.Length) 
             { 
